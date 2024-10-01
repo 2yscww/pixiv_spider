@@ -22,10 +22,6 @@ base_file = os.path.abspath(__file__)
 # 获取文件的文件夹信息
 base_dir = os.path.dirname(base_file)
 
-
-# ? 需要查清楚是连接出现了问题，还是 selenuim 执行 js 出现了问题
-
-
 class downloadImg:
     def __init__(self, save_dir, illust_name, illust_num, illust_url):
         self.save_dir = save_dir
@@ -77,7 +73,6 @@ class downloadImg:
                     return
             except Exception as e:
                 print(f"{img_name} 下载出错: {e}")
-
 
 class createDir:
     def __init__(self, author_name=None, illust_name=None):
@@ -189,9 +184,10 @@ class getOriginal:
                         # 格式化成 'YYYY-MM-DD' 的格式
                         date_str = f"{year}-{int(month):02d}-{int(day):02d}"
 
-                        self.illust_text = self.illust_text + "-" + date_str
+                        self.illust_text = "无题-" + date_str
                 except Exception as e:
                     print(f"无题作品发生了异常: {e}")
+
 
             new_dir = createDir(
                 author_name=self.author_text, illust_name=self.illust_text
@@ -225,6 +221,8 @@ class getOriginal:
                     '//*[@id="root"]/div[2]/div/div[3]/div/div/div[1]/main/section/div[1]/div/figure/div/div[1]/div/div/div/div/div/span',
                 )
 
+
+
             except NoSuchElementException:
                 page_element = False
 
@@ -244,46 +242,41 @@ class getOriginal:
                 self.get_id = illustsID
                 self.image_num = 1
                 
+                
 
             self.getOriginalUrl()
 
-
-    def getOriginalUrl(self):
+    def getOriginalUrl(self):          
+            
+            url = f'https://www.pixiv.net/ajax/illust/{self.get_id}'
         
-            
-        url = f'https://www.pixiv.net/ajax/illust/{self.get_id}'
-            
-            
-        response = self.session.get(url)
-        if response.status_code == 200:
+            response = self.session.get(url)
+            if response.status_code == 200:
 
-            self.illust_num = 1
+                self.illust_num = 1
                 
-            data = response.json()
-            original_url = data.get("body",{}).get("urls",{}).get("original")
+                data = response.json()
+                # print(json.dumps(data, indent=4, ensure_ascii=False))
+                original_url = data.get("body",{}).get("urls",{}).get("original")
                     
-            url_prefix , url_suffix = original_url.split('_p')
+                url_prefix , url_suffix = original_url.split('_p')
                     
-            _ , ex_name = os.path.splitext(url_suffix)
+                base_name , ex_name = os.path.splitext(url_suffix)
                     
-            for i in range(self.image_num):
-                img_url = f'{url_prefix}_p{i}{ex_name}'
-                      
-                download_img = downloadImg(
-                self.save_dir, self.illust_text, self.illust_num, img_url
-                )
-
-                download_img.download_illust()
-
-                self.illust_num += 1
+                for i in range(self.image_num):
+                    img_url = f'{url_prefix}_p{i}{ex_name}'
 
                     
+                    download_img = downloadImg(
+                    self.save_dir, self.illust_text, self.illust_num, img_url
+                    )
+
+                    download_img.download_illust()
+
+                    self.illust_num += 1
+
             else:
                 print(f"原图url请求失败，状态码: {response.status_code}")
-
-
-
-        time.sleep(3)
 
 
 class getAuthorProfile:
@@ -304,7 +297,6 @@ class getAuthorProfile:
         # 设置User-Agent和其他必要的头信息
         headers = {
             "User-Agent": user_agent,
-            # 'Referer': 'https://www.pixiv.net/',
             "Referer": "https://www.pixiv.net/tags/%E7%BA%B1%E9%9B%BE",
         }
         session.headers.update(headers)
@@ -314,6 +306,7 @@ class getAuthorProfile:
 
         # 发送请求获取JSON数据
 
+        # response = session.get(url)
         response = session.get(url, headers=headers)
         if response.status_code == 200:
             data = response.json()
@@ -328,7 +321,6 @@ class getAuthorProfile:
 
         return illusts_id, session
 
-
 class autoLogin:
     def __init__(self, driver, email, password):
         self.driver = driver
@@ -338,24 +330,21 @@ class autoLogin:
     def auto_login(self):
         self.driver.get("https://accounts.pixiv.net/login")
 
-
         self.driver.implicitly_wait(10)
 
-
-
-        input_email = self.driver.find_element(
-            By.XPATH,
-            '//*[@id="app-mount-point"]/div/div/div[4]/div[1]/div[2]/div/div/div/form/fieldset[1]/label/input',
+        input_field = self.driver.find_elements(
+            By.CSS_SELECTOR,
+            'input.sc-bn9ph6-6.cYyjQe',
         )
+        
+        input_email = input_field[0]
+        
+        input_password = input_field[1]
+        
 
         for char in self.email:
             time.sleep(random.uniform(0.1, 0.5))
             input_email.send_keys(char)
-
-        input_password = self.driver.find_element(
-            By.XPATH,
-            '//*[@id="app-mount-point"]/div/div/div[4]/div[1]/div[2]/div/div/div/form/fieldset[2]/label/input',
-        )
 
         for passwd_char in self.password:
             time.sleep(random.uniform(0.1, 0.5))
@@ -363,12 +352,11 @@ class autoLogin:
 
         time.sleep(random.uniform(1, 3))
 
+        # 登录按钮
         self.driver.find_element(
-            By.XPATH,
-            '//*[@id="app-mount-point"]/div/div/div[4]/div[1]/div[2]/div/div/div/form/button',
+            By.CSS_SELECTOR,
+            'button.sc-aXZVg.fSnEpf.sc-eqUAAy.hhGKQA.sc-2o1uwj-9.cmUwMr.sc-2o1uwj-9.cmUwMr',
         ).click()
-
-
 
         try:
             WebDriverWait(self.driver, 20).until(
@@ -380,13 +368,14 @@ class autoLogin:
                 )  # 找到用户的头像
             )
 
-            # //*[@id="root"]/div[2]/div/div[2]/div[1]/div[1]/div/div[3]/div[1]/div[5]/div/button/pixiv-icon//svg
+           
 
             print("登录成功")
         except TimeoutException:
             print("登录超时，可能登录失败")
 
         return self.driver
+
 
 
 class initializeConfig:
@@ -396,7 +385,6 @@ class initializeConfig:
 
     def setup_WebDriver(self):
         chrome_options = Options()
-        # chrome_options.add_argument(f"--proxy-server={self.proxy}")
 
         chrome_options.add_argument(
             "--allow-running-insecure-content"
@@ -427,15 +415,12 @@ if __name__ == "__main__":
     # 记录程序开始时间
     start_time = time.time()
 
-
-    email = "SET YOUR EMAIL"
+    email = "SET YOUR EAMIL"
     password = "SET YOUR PASSWD"
 
     user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36"
 
-
     authorID = input("输入作者的PID: ")
-
 
     init_config = initializeConfig(user_agent)
 
@@ -453,7 +438,6 @@ if __name__ == "__main__":
 
     original.confirmImgNum()
 
-
     # 记录程序结束时间
     end_time = time.time()
 
@@ -462,4 +446,3 @@ if __name__ == "__main__":
 
     # 打印程序运行时间
     print(f"程序运行时间: {elapsed_time:.2f} 秒")
-
